@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.2.0-rc.0
+    container_name: agility-prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - rede-monitoramento
+    expose:
+      - 9090
+    labels:
+      suite.monitoramento: "monitorando"
+    restart: unless-stopped
+
+  cadvisor:
+    image: google/cadvisor:v0.28.3
+    networks:
+      - rede-monitoramento
+    expose:
+      - 8080
+    container_name: "${varCliente}"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    labels:
+      suite.monitoramento: "monitorando"
+    restart: unless-stopped
+
+  caddy:
+    image: stefanprodan/caddy:0.10.10
+    container_name: caddy
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./caddy/:/etc/caddy/
+    labels:
+      suite.monitoramento: "monitorando"
+    restart: unless-stopped
+    networks:
+      - rede-monitoramento
+    environment:
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+
+
+networks:
+  rede-monitoramento:
+
+volumes:
+  prometheus_data:
